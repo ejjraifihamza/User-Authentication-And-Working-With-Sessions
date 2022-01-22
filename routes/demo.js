@@ -1,5 +1,5 @@
 const express = require("express");
-const bycrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 
 const db = require("../data/database");
 
@@ -31,7 +31,23 @@ router.post("/signup", async function (req, res) {
   res.redirect("/login");
 });
 
-router.post("/login", async function (req, res) {});
+router.post("/login", async function (req, res) {
+  const { email, password } = req.body;
+  const existingUser = await db
+    .getDb()
+    .collection("users")
+    .findOne({ email: email });
+  if (!existingUser) {
+    res.status(500).json({ message: "Incorrect Email" });
+    return;
+  }
+  const validPassword = await bcrypt.compare(password, existingUser.password);
+  if (!validPassword) {
+    res.status(500).json({ message: "Incorrect Password" });
+    return;
+  }
+  res.redirect("/admin");
+});
 
 router.get("/admin", function (req, res) {
   res.render("admin");

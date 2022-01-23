@@ -24,7 +24,16 @@ router.get("/signup", function (req, res) {
 });
 
 router.get("/login", function (req, res) {
-  res.render("login");
+  let sessionInputData = req.session.inputData;
+  if (!sessionInputData) {
+    sessionInputData = {
+      hasError: false,
+      email: "",
+      password: "",
+    };
+  }
+  req.session.inputData = null; // will work in the next request
+  res.render("login", { inputData: sessionInputData });
 });
 
 router.post("/signup", async function (req, res) {
@@ -58,7 +67,17 @@ router.post("/signup", async function (req, res) {
     .collection("users")
     .findOne({ email: email });
   if (existingUser) {
-    return res.status(500).json({ error: "Email Already Existing!" });
+    req.session.inputData = {
+      hasError: true,
+      message: "Email Already Exist.",
+      email: email,
+      confirmEmail: confirmEmail,
+      password: password,
+    };
+    req.session.save(() => {
+      res.redirect("/signup");
+    });
+    return;
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -77,12 +96,28 @@ router.post("/login", async function (req, res) {
     .collection("users")
     .findOne({ email: email });
   if (!existingUser) {
-    res.status(500).json({ message: "Incorrect Email" });
+    req.session.inputData = {
+      hasError: true,
+      message: "Could not log you in - please check your credentials!",
+      email: email,
+      password: password,
+    };
+    req.session.save(() => {
+      res.redirect("/login");
+    });
     return;
   }
   const validPassword = await bcrypt.compare(password, existingUser.password);
   if (!validPassword) {
-    res.status(500).json({ message: "Incorrect Password" });
+    req.session.inputData = {
+      hasError: true,
+      message: "Could not log you in - please check your credentials!",
+      email: email,
+      password: password,
+    };
+    req.session.save(() => {
+      res.redirect("/login");
+    });
     return;
   }
   // automaticaly and with help of express-session package below data will store in tha database

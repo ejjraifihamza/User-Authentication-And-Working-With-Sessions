@@ -66,10 +66,21 @@ router.post("/login", async function (req, res) {
     res.status(500).json({ message: "Incorrect Password" });
     return;
   }
-  res.redirect("/admin");
+
+  req.session.user = { id: existingUser._id, email: existingUser.email };
+  req.session.isAuthenticated = true;
+  // to make sur that session insert to database before redirect to protected route(/admin)
+  req.session.save(() => {
+    res.redirect("/admin");
+  });
 });
 
 router.get("/admin", function (req, res) {
+  console.log(req.session.isAuthenticated);
+  if (!req.session.isAuthenticated) {
+    // if (!req.session.user)
+    return res.status(401).render("401");
+  }
   res.render("admin");
 });
 
